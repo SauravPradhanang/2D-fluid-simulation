@@ -13,11 +13,12 @@ pygame.display.set_caption("Fluid Simulation")
 particles = []               # ✅ Initialize BEFORE spawning
 max_particles = 100          # ✅ Initialize BEFORE spawning
 radius = 5
-gravity = np.array([0, 0.1])
+gravity = np.array([0, 0.2])
+collison_damping = 0.2
 
 # Colors
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
+BgColor = (0, 0, 0)
+Color = (0, 191, 255)
 
 clock = pygame.time.Clock()
 
@@ -42,7 +43,7 @@ def spawn_particles_at_start():
                 start_x + i * spacing + spacing // 2,
                 start_y + j * spacing + spacing // 2
             ], dtype=float)
-            vel = (np.random.rand(2) - 0.5) * 4  # Small random velocity
+            vel = (np.random.rand(2) - 0.5) * 10 # Small random velocity
             particles.append({
                 'pos': pos,
                 'vel': vel
@@ -93,7 +94,7 @@ def update_particles():
                 v2t = np.dot(p2['vel'], tangent)
 
                 # Swap normal components for elastic collision
-                v1n, v2n = v2n, v1n
+                v1n, v2n = v2n*collison_damping, v1n*collison_damping
 
                 p1['vel'] = v1n * normal + v1t * tangent
                 p2['vel'] = v2n * normal + v2t * tangent
@@ -114,10 +115,10 @@ while running:
 
     update_particles()
 
-    screen.fill(BLACK)
+    screen.fill(BgColor)
 
     for p in particles:
-        pygame.draw.circle(screen, RED, p['pos'].astype(int), radius)
+        pygame.draw.circle(screen, Color, p['pos'].astype(int), radius)
 
     pygame.display.flip()
     clock.tick(60)
