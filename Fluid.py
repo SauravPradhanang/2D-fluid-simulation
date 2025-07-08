@@ -16,7 +16,7 @@ particle_limit_min = 10
 particle_limit_max = 300
 radius = 5
 gravity = np.array([0, 0.2])
-collison_damping = 0.2
+collison_damping = 0.8
 
 # Colors
 BLACK = (0, 0, 0)
@@ -123,7 +123,7 @@ def update_particles():
                 v2t = np.dot(p2['vel'], tangent)
 
                 # Swap normal components for elastic collision
-                v1n, v2n = v2n, v1n
+                v1n, v2n = v2n*collison_damping, v1n*collison_damping
 
                 p1['vel'] = v1n * normal + v1t * tangent
                 p2['vel'] = v2n * normal + v2t * tangent
