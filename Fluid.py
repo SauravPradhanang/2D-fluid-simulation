@@ -23,13 +23,38 @@ clock = pygame.time.Clock()
 
 # Function to spawn all particles at the start
 def spawn_particles_at_start():
-    for _ in range(max_particles):
-        pos = np.random.rand(2) * np.array([width, height])
-        vel = (np.random.rand(2) - 0.5) * 10  # Random velocity between -5 and 5
-        particles.append({
-            'pos': pos,
-            'vel': vel
-        })
+    spacing = 40  # space between particles
+    grid_cols = int(np.sqrt(max_particles))  # make roughly square grid
+    grid_rows = int(np.ceil(max_particles / grid_cols))
+
+    grid_width = grid_cols * spacing
+    grid_height = grid_rows * spacing
+
+    start_x = width // 2 - grid_width // 2
+    start_y = height // 2 - grid_height // 2
+
+    count = 0
+    for i in range(grid_cols):
+        for j in range(grid_rows):
+            if count >= max_particles:
+                return
+            pos = np.array([
+                start_x + i * spacing + spacing // 2,
+                start_y + j * spacing + spacing // 2
+            ], dtype=float)
+            vel = (np.random.rand(2) - 0.5) * 4  # Small random velocity
+            particles.append({
+                'pos': pos,
+                'vel': vel
+            })
+            count += 1
+
+#Smoothing Kernel
+def SmoothingKernel(smoothingRadius, distance):
+    volume = (np.pi)*(smoothingRadius**8)/4
+    value = max(0, (smoothingRadius**2)-(distance**2))
+    return (value**3)/volume
+    
 
 spawn_particles_at_start()   # ✅ Now runs correctly since variables are defined
 
@@ -78,6 +103,7 @@ def update_particles():
                 correction = normal * (overlap / 2)
                 p1['pos'] -= correction
                 p2['pos'] += correction
+
 
 # Main loop
 running = True
