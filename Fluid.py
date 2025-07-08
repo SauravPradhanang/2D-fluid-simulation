@@ -10,36 +10,56 @@ screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Fluid Simulation")
 
 # Particle settings
-particles = []               # ✅ Initialize BEFORE spawning
-max_particles = 100          # ✅ Initialize BEFORE spawning
+particles = []
+max_particles = 100
+particle_limit_min = 10
+particle_limit_max = 300
 radius = 5
 gravity = np.array([0, 0.1])
 
 # Colors
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+WHITE = (255, 255, 255)
+GRAY = (150, 150, 150)
 
 clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 24)
 
-# Function to spawn all particles at the start
-def spawn_particles_at_start():
-    for _ in range(max_particles):
+# Slider setup
+slider_width = 300
+slider_height = 10
+slider_x = (width - slider_width) // 2
+slider_y = height - 50
+slider_rect = pygame.Rect(slider_x, slider_y, slider_width, slider_height)
+
+handle_width = 20
+handle_height = 30
+handle_x = slider_x + int(slider_width * (max_particles - particle_limit_min) / (particle_limit_max - particle_limit_min)) - handle_width // 2
+handle_y = slider_y - 10  # ✅ corrected
+handle_rect = pygame.Rect(handle_x, handle_y, handle_width, handle_height)
+
+dragging = False  # ✅ corrected
+
+# Function to spawn particles
+def spawn_particles(n):
+    for _ in range(n):
         pos = np.random.rand(2) * np.array([width, height])
-        vel = (np.random.rand(2) - 0.5) * 10  # Random velocity between -5 and 5
+        vel = (np.random.rand(2) - 0.5) * 10
         particles.append({
             'pos': pos,
             'vel': vel
         })
 
-spawn_particles_at_start()   # ✅ Now runs correctly since variables are defined
+# Spawn initial particles
+spawn_particles(max_particles)  # ✅ corrected
 
-# Update particle positions and handle collisions
+# Particle physics update
 def update_particles():
     for p in particles:
         p['vel'] += gravity
         p['pos'] += p['vel']
 
-        # Wall collisions
         if p['pos'][0] <= 0 or p['pos'][0] >= width:
             p['vel'][0] *= -1
         if p['pos'][1] <= 0:
@@ -67,13 +87,11 @@ def update_particles():
                 v2n = np.dot(p2['vel'], normal)
                 v2t = np.dot(p2['vel'], tangent)
 
-                # Swap normal components for elastic collision
                 v1n, v2n = v2n, v1n
 
                 p1['vel'] = v1n * normal + v1t * tangent
                 p2['vel'] = v2n * normal + v2t * tangent
 
-                # Separate particles to prevent sticking
                 overlap = 2 * radius - dist
                 correction = normal * (overlap / 2)
                 p1['pos'] -= correction
@@ -86,12 +104,40 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if handle_rect.collidepoint(event.pos):
+                dragging = True
+
+        elif event.type == pygame.MOUSEBUTTONUP:
+            dragging = False
+
+        elif event.type == pygame.MOUSEMOTION:
+            if dragging:
+                mouse_x = event.pos[0]
+                handle_rect.x = max(slider_x, min(mouse_x - handle_width // 2, slider_x + slider_width - handle_width))
+
+                relative_pos = (handle_rect.x + handle_width // 2 - slider_x) / slider_width
+                target_particles = int(particle_limit_min + relative_pos * (particle_limit_max - particle_limit_min))
+
+                if target_particles > len(particles):
+                    spawn_particles(target_particles - len(particles))
+                elif target_particles < len(particles):
+                    del particles[target_particles:]
+
     update_particles()
 
     screen.fill(BLACK)
 
     for p in particles:
         pygame.draw.circle(screen, RED, p['pos'].astype(int), radius)
+
+    # Draw slider
+    pygame.draw.rect(screen, GRAY, slider_rect)
+    pygame.draw.rect(screen, WHITE, handle_rect)
+
+    # Display particle count
+    text = font.render(f"Particles: {len(particles)}", True, WHITE)
+    screen.blit(text, (slider_x, slider_y - 30))
 
     pygame.display.flip()
     clock.tick(60)
