@@ -15,8 +15,9 @@ max_particles = 100
 particle_limit_min = 10
 particle_limit_max = 300
 radius = 5
-gravity = np.array([0, 0.2])
+gravity = np.array([0, 0])
 collison_damping = 0.8
+smoothingRadius= 50
 
 # Colors
 BLACK = (0, 0, 0)
@@ -29,7 +30,7 @@ font = pygame.font.SysFont(None, 24)
 
 # Function to spawn all particles at the start
 def spawn_particles(n):
-    spacing = 40  # spacing between particles to avoid overlap
+    spacing = 60  # spacing between particles to avoid overlap
     grid_cols = int(np.sqrt(n))
     grid_rows = int(np.ceil(n / grid_cols))
 
@@ -48,7 +49,8 @@ def spawn_particles(n):
                 start_x + i * spacing + spacing // 2,
                 start_y + j * spacing + spacing // 2
             ], dtype=float)
-            vel = (np.random.rand(2) - 0.5) * 4  # small random velocity
+           # vel = (np.random.rand(2) - 0.5) * 4  # small random velocity
+            vel = 0
             particles.append({
                 'pos': pos,
                 'vel': vel
@@ -132,6 +134,21 @@ def update_particles():
                 correction = normal * (overlap / 2)
                 p1['pos'] -= correction
                 p2['pos'] += correction
+
+
+positions = [p['pos'] for p in particles]
+#Calculate Density
+def CalculateDensity(samplePoint):
+    density = 0.0
+    mass = 1.0
+    
+    for position in positions:
+        dst = np.linalg.norm(position - samplePoint)
+        influence = SmoothingKernel(smoothingRadius, dst)
+        density += mass * influence
+
+    return density
+
 
 
 # Main loop
