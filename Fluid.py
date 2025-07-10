@@ -15,7 +15,7 @@ max_particles = 100
 particle_limit_min = 10
 particle_limit_max = 300
 radius = 5
-gravity = np.array([0, 0])
+gravity = np.array([0, 0.2])
 collison_damping = 0.8
 smoothingRadius= 50
 
@@ -49,8 +49,8 @@ def spawn_particles(n):
                 start_x + i * spacing + spacing // 2,
                 start_y + j * spacing + spacing // 2
             ], dtype=float)
-           # vel = (np.random.rand(2) - 0.5) * 4  # small random velocity
-            vel = 0
+            vel = (np.random.rand(2) - 0.5) * 4  # small random velocity
+            #vel = 0
             particles.append({
                 'pos': pos,
                 'vel': vel,
