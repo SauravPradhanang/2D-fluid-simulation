@@ -131,9 +131,10 @@ spawn_particles(max_particles)
 
 # Smoothing kernel
 def SmoothingKernel(radius, dst):
-    volume = np.pi * (radius ** 8)
-    value = max(0, radius * radius - dst * dst)
-    return (value ** 3) / volume if volume != 0 else 0
+    if dst > radius:
+        return 0
+    return (radius - dst) / radius  # linear falloff
+
 
 # Calculate density at a point
 def CalculateDensity(samplePoint):
@@ -144,6 +145,17 @@ def CalculateDensity(samplePoint):
         influence = SmoothingKernel(smoothing_radius, dst)
         density += mass * influence
     return density
+
+def CalculateDensityInCircle(center, radius, samples=20):
+    densities = []
+    for _ in range(samples):
+        # Random point inside the circle
+        angle = np.random.uniform(0, 2 * np.pi)
+        r = radius * np.sqrt(np.random.uniform(0, 1))
+        sample_point = center + np.array([r * np.cos(angle), r * np.sin(angle)])
+        d = CalculateDensity(sample_point)
+        densities.append(d)
+    return np.mean(densities)
 
 
 # Particle physics update
@@ -252,6 +264,13 @@ while running:
     # Draw the circle following the mouse
     mouse_pos = pygame.mouse.get_pos()
     pygame.draw.circle(screen, (0, 255, 0), mouse_pos, circle_radius, 1)
+
+    mouse_pos_np = np.array(mouse_pos, dtype=float)
+    density_inside_circle = CalculateDensityInCircle(mouse_pos_np, circle_radius, samples=20)
+
+    # Render the density value as text
+    density_text = font.render(f"Density in circle: {density_inside_circle:.2f}", True, WHITE)
+    screen.blit(density_text, (mouse_pos[0] + circle_radius + 10, mouse_pos[1] - 10))
 
     # Draw the circle radius slider
     pygame.draw.rect(screen, GRAY, circle_slider_rect)
