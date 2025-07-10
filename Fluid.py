@@ -73,11 +73,30 @@ slider_rect = pygame.Rect(slider_x, slider_y, slider_width, slider_height)
 handle_width = 20
 handle_height = 30
 handle_x = slider_x + int(slider_width * (max_particles - particle_limit_min) / (particle_limit_max - particle_limit_min)) - handle_width // 2
-handle_y = slider_y - 10  # ✅ corrected
+handle_y = slider_y - 10  
 handle_rect = pygame.Rect(handle_x, handle_y, handle_width, handle_height)
 
-dragging = False  # ✅ corrected
+# circle following mouse 
+circle_radius_min = 10
+circle_radius_max = 150
+circle_radius = 50
 
+circle_slider_width = 300
+circle_slider_height = 10
+circle_slider_x = (width - circle_slider_width)// 2
+circle_slider_y = height - 90
+circle_slider_rect = pygame.Rect(circle_slider_x,circle_slider_y,circle_slider_width,circle_slider_height)
+
+circle_handler_width = 20
+circle_handler_height = 30
+circle_handler_x = circle_slider_x + int(circle_slider_width * (circle_radius - circle_radius_min) / (circle_radius_max - circle_radius_min))- circle_handler_width//2
+circle_handler_y = circle_slider_y - 10 
+circle_handler_rect = pygame.Rect(circle_handler_x,circle_handler_y,circle_handler_width,circle_handler_height)
+
+circle_dragging = False
+
+
+dragging = False 
 # Function to spawn particles
 # def spawn_particles(n):
 #     for _ in range(n):
@@ -89,7 +108,7 @@ dragging = False  # ✅ corrected
 #         })
 
 # Spawn initial particles
-spawn_particles(max_particles)  # ✅ corrected
+spawn_particles(max_particles) 
 
 # Particle physics update
 def update_particles():
@@ -155,15 +174,19 @@ def CalculateDensity(samplePoint):
 running = True
 while running:
     for event in pygame.event.get():
+
         if event.type == pygame.QUIT:
             running = False
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if handle_rect.collidepoint(event.pos):
                 dragging = True
+            if circle_handler_rect.collidepoint(event.pos):
+                circle_dragging = True
 
         elif event.type == pygame.MOUSEBUTTONUP:
             dragging = False
+            circle_dragging = False
 
         elif event.type == pygame.MOUSEMOTION:
             if dragging:
@@ -177,11 +200,30 @@ while running:
                     spawn_particles(target_particles - len(particles))
                 elif target_particles < len(particles):
                     del particles[target_particles:]
+            if circle_dragging:
+                mouse_x = event.pos[0]
+                circle_handler_rect.x = max(circle_slider_x, min(mouse_x - circle_handler_width // 2, circle_slider_x + circle_slider_width - circle_handler_width))
+                relative_pos = (circle_handler_rect.x + circle_handler_width // 2 - circle_slider_x) / circle_slider_width
+                circle_radius = int(circle_radius_min + relative_pos * (circle_radius_max - circle_radius_min))
 
     update_particles()
 
     screen.fill(BLACK)
+    
+    # Draw the circle following the mouse
+    mouse_pos = pygame.mouse.get_pos()
+    pygame.draw.circle(screen, (0, 255, 0), mouse_pos, circle_radius, 1)
 
+    # Draw the circle radius slider
+    pygame.draw.rect(screen, GRAY, circle_slider_rect)
+    pygame.draw.rect(screen, WHITE, circle_handler_rect)
+
+    # Display circle radius value
+    circle_text = font.render(f"Circle Radius: {circle_radius}", True, WHITE)
+    screen.blit(circle_text, (circle_slider_x, circle_slider_y - 30))
+
+
+    #draw particle
     for p in particles:
         pygame.draw.circle(screen, RED, p['pos'].astype(int), radius)
 
