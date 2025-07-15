@@ -11,11 +11,11 @@ pygame.display.set_caption("Fluid Simulation")
 
 # Particle settings
 particles = []
-max_particles = 100
+max_particles = 10
 particle_limit_min = 10
 particle_limit_max = 300
 radius = 5
-gravity = np.array([0, 0.2])
+gravity = np.array([0, 0])
 collison_damping = 0.8
 smoothingRadius= 50
 
@@ -49,8 +49,8 @@ def spawn_particles(n):
                 start_x + i * spacing + spacing // 2,
                 start_y + j * spacing + spacing // 2
             ], dtype=float)
-            vel = (np.random.rand(2) - 0.5) * 4  # small random velocity
-            #vel = 0
+            #vel = (np.random.rand(2) - 0.5) * 4  # small random velocity
+            vel = 0
             particles.append({
                 'pos': pos,
                 'vel': vel,
@@ -59,10 +59,10 @@ def spawn_particles(n):
             count += 1
 
 #Smoothing Kernel
-def SmoothingKernel(smoothingRadius, distance):
-    volume = (np.pi)*(smoothingRadius**8)/4
-    value = max(0, (smoothingRadius**2)-(distance**2))
-    return (value**3)/volume
+# def SmoothingKernel(smoothingRadius, distance):
+#     volume = (np.pi)*(smoothingRadius**8)/4
+#     value = max(0, (smoothingRadius**2)-(distance**2))
+#     return (value**3)/volume
     
 # Slider setup
 slider_width = 300
@@ -136,7 +136,7 @@ spawn_particles(max_particles)
 def SmoothingKernel(radius, dst):
     if dst > radius:
         return 0
-    return (radius - dst) / radius  # linear falloff
+    return (radius**2 - dst**2) / radius  # linear falloff
 
 
 # Calculate density at a point
