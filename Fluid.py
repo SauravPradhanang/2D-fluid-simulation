@@ -147,6 +147,7 @@ def update_particles():
             if p['vel'][1] > 0:
                 p['vel'][1] *= boundary_damping
 
+    #Particle particle collision
     for i in range(len(particles)):
         for j in range(i + 1, len(particles)):
             p1 = particles[i]
@@ -262,6 +263,14 @@ while running:
 
     pygame.draw.rect(screen, GRAY, slider_rect)
     pygame.draw.rect(screen, WHITE, handle_rect)
+    text = font.render(f"Particles: {len(particles)}", True, WHITE)
+    screen.blit(text, (slider_x, slider_y - 30))
+
+    # Draw slider
+    pygame.draw.rect(screen, GRAY, slider_rect)
+    pygame.draw.rect(screen, WHITE, handle_rect)
+
+    # Display particle count
     text = font.render(f"Particles: {len(particles)}", True, WHITE)
     screen.blit(text, (slider_x, slider_y - 30))
 
