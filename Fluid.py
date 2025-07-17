@@ -21,49 +21,12 @@ smoothingRadius= 50
 
 # Colors
 BLACK = (0, 0, 0)
-RED = (255, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (150, 150, 150)
 
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 24)
 
-# Function to spawn all particles at the start
-def spawn_particles(n):
-    spacing = 60  # spacing between particles to avoid overlap
-    grid_cols = int(np.sqrt(n))
-    grid_rows = int(np.ceil(n / grid_cols))
-
-    grid_width = grid_cols * spacing
-    grid_height = grid_rows * spacing
-
-    start_x = width // 2 - grid_width // 2
-    start_y = height // 2 - grid_height // 2
-
-    count = 0
-    for i in range(grid_cols):
-        for j in range(grid_rows):
-            if count >= n:
-                return
-            pos = np.array([
-                start_x + i * spacing + spacing // 2,
-                start_y + j * spacing + spacing // 2
-            ], dtype=float)
-            #vel = (np.random.rand(2) - 0.5) * 4  # small random velocity
-            vel = 0
-            particles.append({
-                'pos': pos,
-                'vel': vel,
-                'smoothing_radius':smoothing_radius
-            })
-            count += 1
-
-#Smoothing Kernel
-# def SmoothingKernel(smoothingRadius, distance):
-#     volume = (np.pi)*(smoothingRadius**8)/4
-#     value = max(0, (smoothingRadius**2)-(distance**2))
-#     return (value**3)/volume
-    
 # Slider setup
 slider_width = 300
 slider_height = 10
@@ -96,7 +59,6 @@ circle_handler_rect = pygame.Rect(circle_handler_x,circle_handler_y,circle_handl
 
 circle_dragging = False
 
-
 # Smoothing radius parameters
 smoothing_radius_min = 20
 smoothing_radius_max = 150
@@ -117,17 +79,18 @@ smoothing_handle_rect = pygame.Rect(smoothing_handle_x, smoothing_handle_y, smoo
 
 smoothing_dragging = False
 
-
 dragging = False 
+
 # Function to spawn particles
-# def spawn_particles(n):
-#     for _ in range(n):
-#         pos = np.random.rand(2) * np.array([width, height])
-#         vel = (np.random.rand(2) - 0.5) * 10
-#         particles.append({
-#             'pos': pos,
-#             'vel': vel
-#         })
+def spawn_particles(n):
+    for _ in range(n):
+        pos = np.random.rand(2) * np.array([width, height])
+        vel = (np.random.rand(2) - 0.5) * 10
+        particles.append({
+            'pos': pos,
+            'vel': vel,
+            'smoothing_radius': smoothing_radius
+        })
 
 # Spawn initial particles
 spawn_particles(max_particles) 
@@ -136,30 +99,19 @@ spawn_particles(max_particles)
 def SmoothingKernel(radius, dst):
     if dst > radius:
         return 0
-    return (radius**2 - dst**2) / radius  # linear falloff
+    return 1 - dst / radius
 
+def calculate_density(sample_point, positions, smoothing_radius):
+    density = 0.0
+    mass = 1.0
 
-# Calculate density at a point
-def CalculateDensity(samplePoint):
-    density = 0
-    mass = 1
-    for p in particles:
-        dst = np.linalg.norm(p['pos'] - samplePoint)
-        influence = SmoothingKernel(smoothing_radius, dst)
-        density += mass * influence
+    for position in positions:
+        dst = np.linalg.norm(position - sample_point)
+        if dst < smoothing_radius:
+            influence = SmoothingKernel(smoothing_radius, dst)
+            density += mass * influence
+
     return density
-
-def CalculateDensityInCircle(center, radius, samples=20):
-    densities = []
-    for _ in range(samples):
-        # Random point inside the circle
-        angle = np.random.uniform(0, 2 * np.pi)
-        r = radius * np.sqrt(np.random.uniform(0, 1))
-        sample_point = center + np.array([r * np.cos(angle), r * np.sin(angle)])
-        d = CalculateDensity(sample_point)
-        densities.append(d)
-    return np.mean(densities)
-
 
 # Particle physics update
 def update_particles():
@@ -205,22 +157,6 @@ def update_particles():
                 p1['pos'] -= correction
                 p2['pos'] += correction
 
-
-positions = [p['pos'] for p in particles]
-#Calculate Density
-def CalculateDensity(samplePoint):
-    density = 0.0
-    mass = 1.0
-    
-    for position in positions:
-        dst = np.linalg.norm(position - samplePoint)
-        influence = SmoothingKernel(smoothingRadius, dst)
-        density += mass * influence
-
-    return density
-
-
-
 # Main loop
 running = True
 while running:
@@ -235,7 +171,7 @@ while running:
             if circle_handler_rect.collidepoint(event.pos):
                 circle_dragging = True
             if smoothing_handle_rect.collidepoint(event.pos):
-                    smoothing_dragging = True
+                smoothing_dragging = True
 
         elif event.type == pygame.MOUSEBUTTONUP:
             dragging = False
@@ -267,8 +203,6 @@ while running:
 
 
     update_particles()
-    
-
 
     screen.fill(BLACK)
 
@@ -285,10 +219,10 @@ while running:
     pygame.draw.circle(screen, (0, 255, 0), mouse_pos, circle_radius, 1)
 
     mouse_pos_np = np.array(mouse_pos, dtype=float)
-    density_inside_circle = CalculateDensityInCircle(mouse_pos_np, circle_radius, samples=20)
+    density_inside_circle = calculate_density(mouse_pos_np, [p['pos'] for p in particles], smoothing_radius)
 
     # Render the density value as text
-    density_text = font.render(f"Density in circle: {density_inside_circle:.2f}", True, WHITE)
+    density_text = font.render(f"Density: {density_inside_circle:.2f}", True, WHITE)
     screen.blit(density_text, (mouse_pos[0] + circle_radius + 10, mouse_pos[1] - 10))
 
     # Draw the circle radius slider
@@ -299,24 +233,25 @@ while running:
     circle_text = font.render(f"Circle Radius: {circle_radius}", True, WHITE)
     screen.blit(circle_text, (circle_slider_x, circle_slider_y - 30))
 
-
-    #draw particle
+    # Draw particles with blue gradient shading first, then white center dot
     for p in particles:
         # Update smoothing_radius for all particles from slider value
         p['smoothing_radius'] = smoothing_radius
-        pygame.draw.circle(screen, RED, p['pos'].astype(int), radius)
 
-            # Draw smoothing radius circle around each particle
-        smoothing_color = (0, 0, 255, 40)  # Blue with transparency
-        smoothing_surface = pygame.Surface((smoothing_radius*2, smoothing_radius*2), pygame.SRCALPHA)
-        pygame.draw.circle(
-            smoothing_surface,
-            smoothing_color,
-            (smoothing_radius, smoothing_radius),
-            smoothing_radius,
-            4  # thin outline
-        )
+        # Draw blue gradient shading based on smoothing kernel
+        smoothing_surface = pygame.Surface((smoothing_radius * 2, smoothing_radius * 2), pygame.SRCALPHA)
+        center = smoothing_radius
+
+        for r in range(smoothing_radius, radius, -1):  # from smoothing_radius down to radius+1 to avoid overlap
+            alpha = int(255 * SmoothingKernel(smoothing_radius, r))
+            if alpha > 0:
+                color = (0, 0, 255, alpha)
+                pygame.draw.circle(smoothing_surface, color, (center, center), r)
+
         screen.blit(smoothing_surface, (p['pos'][0] - smoothing_radius, p['pos'][1] - smoothing_radius))
+
+        # Draw white particle dot at center ON TOP
+        pygame.draw.circle(screen, WHITE, p['pos'].astype(int), radius)
 
     # Draw slider
     pygame.draw.rect(screen, GRAY, slider_rect)
