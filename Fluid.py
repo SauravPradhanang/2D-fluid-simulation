@@ -20,7 +20,7 @@ gravity_force = np.array([0, 0.1])
 damping_factor = 0.97
 
 # Pressure parameters
-pressure_multiplier = 5.0
+pressure_multiplier = 10
 target_density = 5.0
 
 # Colors
@@ -34,6 +34,13 @@ font = pygame.font.SysFont(None, 24)
 
 # Freeze state flag
 frozen = False
+
+# New globals for grabbing particles inside circle
+grabbed_particles = []
+grab_offset_dict = {}
+
+# Flag for right click pushing
+right_click_push = False
 
 # UI setup
 freeze_button_width = 150
@@ -141,6 +148,8 @@ def convert_density_to_pressure(density):
     return pressure
 
 def simulation_step(delta_time):
+    global grabbed_particles
+    
     for p in particles:
         if gravity_enabled:
             p['vel'] += gravity_force * delta_time
@@ -154,8 +163,24 @@ def simulation_step(delta_time):
         pressure_acc = pressure_force / (density if density != 0 else 1)
         p['vel'] += pressure_acc * delta_time
 
+    # If right click pushing, apply pushing force for particles inside circle
+    if right_click_push:
+        mouse_pos_np = np.array(pygame.mouse.get_pos(), dtype=float)
+        push_strength = 0.15  # tweak as needed for force strength
+        for p in particles:
+            dir_vec = p['pos'] - mouse_pos_np
+            dist = np.linalg.norm(dir_vec)
+            if dist < circle_radius and dist > 0:
+                norm_dir = dir_vec / dist
+                penetration = circle_radius - dist
+                p['vel'] += norm_dir * penetration * push_strength * delta_time
+
     boundary_damping = -0.7
     for p in particles:
+        # Fix here: Use identity comparison to avoid ValueError
+        if any(p is gp for gp in grabbed_particles):
+            continue
+        
         p['vel'] *= damping_factor
         p['pos'] += p['vel'] * delta_time
 
@@ -203,6 +228,9 @@ def simulation_step(delta_time):
 # Main loop
 running = True
 while running:
+    mouse_pos = pygame.mouse.get_pos()
+    mouse_pos_np = np.array(mouse_pos, dtype=float)
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -218,7 +246,22 @@ while running:
                 circle_dragging = True
             if smoothing_handle_rect.collidepoint(event.pos):
                 smoothing_dragging = True
+            if event.button == 1:  # Left click grabs particles inside circle
+                grabbed_particles = []
+                grab_offset_dict = {}
+                for p in particles:
+                    dist = np.linalg.norm(p['pos'] - mouse_pos_np)
+                    if dist <= circle_radius:
+                        grabbed_particles.append(p)
+                        grab_offset_dict[id(p)] = p['pos'] - mouse_pos_np
+            elif event.button == 3:  # Right click enables pushing
+                right_click_push = True
         elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1:
+                grabbed_particles = []
+                grab_offset_dict = {}
+            elif event.button == 3:
+                right_click_push = False
             dragging = False
             circle_dragging = False
             smoothing_dragging = False
@@ -243,6 +286,11 @@ while running:
 
     if not frozen:
         simulation_step(1.0)
+        if grabbed_particles:
+            for p in grabbed_particles:
+                offset = grab_offset_dict.get(id(p), np.zeros(2))
+                p['pos'] = mouse_pos_np + offset
+                p['vel'] = np.zeros(2)  # Stop motion while dragging
 
     screen.fill(BLACK)
 
@@ -258,8 +306,6 @@ while running:
     smoothing_text = font.render(f"Smoothing Radius: {smoothing_radius}", True, WHITE)
     screen.blit(smoothing_text, (smoothing_slider_x, smoothing_slider_y - 30))
 
-    mouse_pos = pygame.mouse.get_pos()
-    mouse_pos_np = np.array(mouse_pos, dtype=float)
     pygame.draw.circle(screen, (0, 255, 0), mouse_pos, circle_radius, 1)
 
     density_inside_circle = calculate_density(mouse_pos_np, [p['pos'] for p in particles], smoothing_radius)
