@@ -20,7 +20,7 @@ gravity_force = np.array([0, 0.1])
 damping_factor = 0.97
 
 # Pressure parameters
-pressure_multiplier = 2.0
+pressure_multiplier = 5.0
 target_density = 5.0
 
 # Colors
